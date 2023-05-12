@@ -2,6 +2,7 @@
   "dependencies": {
     "discord.js": "^14.7.1",
     "dotenv": "^16.0.3",
+    "mongodb": "^5.5.0",
     "node-cron": "^3.0.2",
     "puppeteer": "^19.4.1",
     "puppeteer-core": "^19.4.1",

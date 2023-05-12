@@ -2,13 +2,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const config = require('./config.json');
 const Discord = require("discord.js");
-const wait = require('node:timers/promises').setTimeout;
 const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
-const { env } = require('node:process');
-// const sovi = require('./commands/soviOccupancy');
 const client = new Discord.Client({
 	intents: [
-		//
 		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMessages,
 		GatewayIntentBits.MessageContent
@@ -37,10 +33,6 @@ for (const file of commandFiles) {
 	}
 
 }
-//************************************************************************************************************************************* 
-// Storing data in db
-
-
 
 
 
