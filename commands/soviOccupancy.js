@@ -2,8 +2,8 @@ const { SlashCommandBuilder } = require('discord.js');
 const puppeteer = require('puppeteer');
 const wait = require('node:timers/promises').setTimeout;
 const nodeCron = require("node-cron");
-
-
+const { MongoClient } = require('mongodb');
+const config = require('../config.json');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -39,4 +39,26 @@ async function Sovi() {
     //returns the data scraped
     return data;
 }
-//try to import the function again
+/*
+This function while run every hour that sovi is open, from 8am to 5pm
+*/
+const insertingData = nodeCron.schedule("0 8-17 * * *", async () => {
+    const client = new MongoClient(config.mongoDBURI)
+    await client.connect()
+    //create new instance of a database
+    const database = client.db("Sovi")
+    //make the collection
+    const Collection = database.collection("SoviOccupancy")
+    //make the doc
+    const doc = {
+        amount: await Sovi(),
+        month: new Date().getMonth(),
+        day: new Date().getDay(),
+        year: new Date().getFullYear(),
+        time: new Date().toLocaleTimeString()
+    }
+    //add the doc to the collection
+    const result = await Collection.insertOne(doc)
+    console.log(`A document was inserted with the _id: ${result.insertedId}`);
+    await client.close()
+})
