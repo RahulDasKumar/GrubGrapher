@@ -38,12 +38,7 @@ async function getOccupancyByHour(hour) {
     })
 }
 
-// Create the chart
-// const chart = new QuickChart();
-// chart.setConfig({
-//     type: 'bar',
-//     data: { labels: ['Hello world', 'Foo bar'], datasets: [{ label: 'Foo', data: [1, 2] }] },
-// });
+
 
 async function makeTheChart() {
     chart.setWidth(500)
