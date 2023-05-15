@@ -3,32 +3,27 @@ const { SlashCommandBuilder } = require('discord.js');
 const { MongoClient } = require('mongodb');
 const config = require('../config.json');
 const chart = new QuickChart();
+const Database = require('../database')
+const databaseObject = new Database("Sovi")
+
 /*
 Gets the documents from a collection, and find a certain document by the hour
 args-hour(which hour of the day do you want the collection from)
 */
 async function retrieveDocuments(hour) {
-    const uri = config.mongoDBURI
-    const client = new MongoClient(uri)
     const regexPattern = `^${hour}`;
     const regex = new RegExp(regexPattern);
-    //exclude id and include amount, making only the amount showing up
     const options = {
-        projection: { _id: 0, amount: 1 }
+        projection: { _id: 0, amount: 1, day: 1 }
     }
-    console.log(regex)
-    await client.connect()
-    const db = client.db("Sovi")
-    const Collection = db.collection("SoviOccupancy")
+    const Collection = await databaseObject.connectToCollection("SoviOccupancy")
     const cursor = Collection.find({ time: { $regex: regex } }, options)
     const document = cursor.toArray()
     if (await Collection.countDocuments
         ({ time: { $regex: regex } }) === 0) {
         console.log("No documents found")
     }
-
-    await client.close()
-
+    await databaseObject.closeDatabase()
     return document;
 }
 
@@ -38,12 +33,7 @@ async function getOccupancyByHour(hour) {
     })
 }
 
-// Create the chart
-// const chart = new QuickChart();
-// chart.setConfig({
-//     type: 'bar',
-//     data: { labels: ['Hello world', 'Foo bar'], datasets: [{ label: 'Foo', data: [1, 2] }] },
-// });
+
 
 async function makeTheChart() {
     chart.setWidth(500)
@@ -60,7 +50,6 @@ async function makeTheChart() {
         "3pm": await getOccupancyByHour(3),
         "4pm": await getOccupancyByHour(4),
         "5pm": await getOccupancyByHour(5)
-
     }
     chart.setConfig({
         "type": "line",
