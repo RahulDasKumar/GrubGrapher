@@ -4,7 +4,8 @@ const wait = require('node:timers/promises').setTimeout;
 const nodeCron = require("node-cron");
 const { MongoClient } = require('mongodb');
 const config = require('../config.json');
-
+const Database = require('../database')
+const SoviDatabase = new Database("Sovi")
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('sovi')
@@ -40,16 +41,43 @@ async function Sovi() {
     return data;
 }
 /*
+Retireves all documents from a Collection
+args-CollectionName
+*/
+async function getDocuments(CollectionName) {
+    const Collection = await SoviDatabase.connectToCollection(CollectionName)
+    //find all documents with the current day, prevents the bug where inconsitent data shows up
+    const cursor = Collection.find({}, { day: 1 })
+    const document = cursor.toArray()
+    return document;
+}
+/*
+Allocates data so the database for daily hours stays updated
+args-SourceCollectionName(Collection where data is being taken from), 
+DestinationCollectionName(Collection where data is being inputed to)
+*/
+async function moveDataBetweenCollections(SourceCollectionName, DestinationCollectionName) {
+    const documents = await getDocuments(SourceCollectionName).then(async (result) => {
+        await SoviDatabase.closeDatabase()
+        return result;
+    })
+    if (documents.length === 20) {
+        const Collection = await SoviDatabase.connectToCollection(SourceCollectionName)
+        const FirstTenDocumentd = await Collection.find({}, { day: 1 }).limit(10).toArray()
+        const documentIdsToDelete = FirstTenDocumentd.map(doc => doc._id)
+        const newCollection = await SoviDatabase.connectToCollection(DestinationCollectionName)
+        await newCollection.insertMany(FirstTenDocumentd)
+        await Collection.deleteMany({ _id: { $in: documentIdsToDelete } });
+        await SoviDatabase.closeDatabase()
+    }
+    else
+        console.log("Not enough documents to do anything here")
+}
+/*
 This function while run every hour that sovi is open, from 8am to 5pm
 */
 const insertingData = nodeCron.schedule("0 8-17 * * *", async () => {
-    const client = new MongoClient(config.mongoDBURI)
-    await client.connect()
-    //create new instance of a database
-    const database = client.db("Sovi")
-    //make the collection
-    const Collection = database.collection("SoviOccupancy")
-    //make the doc
+    const Collection = await SoviDatabase.connectToCollection("SoviOccupancy")
     const doc = {
         amount: await Sovi(),
         month: new Date().getMonth(),
@@ -57,8 +85,14 @@ const insertingData = nodeCron.schedule("0 8-17 * * *", async () => {
         year: new Date().getFullYear(),
         time: new Date().toLocaleTimeString()
     }
-    //add the doc to the collection
     const result = await Collection.insertOne(doc)
     console.log(`A document was inserted with the _id: ${result.insertedId}`);
-    await client.close()
+    await SoviDatabase.closeDatabase()
+
+})
+/*
+Runs at 6pm everyday to check if database needs relocating
+*/
+const movingDataBetweenCollections = nodeCron.schedule("0 18 * * *", async () => {
+    await moveDataBetweenCollections("SoviOccupancy", "TotalSoviOccupancy")
 })
