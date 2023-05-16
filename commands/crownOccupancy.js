@@ -1,6 +1,9 @@
 const { SlashCommandBuilder } = require('discord.js');
 const puppeteer = require('puppeteer');
 const wait = require('node:timers/promises').setTimeout;
+const Database = require('../database')
+const CrownCommonDatabase = new Database("CrownCommons")
+const nodeCron = require("node-cron");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -29,3 +32,52 @@ async function crown() {
     await browser.close();
     return data;
 };
+
+async function getDocuments(CollectionName) {
+    const Collection = await CrownCommonDatabase.connectToCollection(CollectionName)
+    //find all documents with the current day, prevents the bug where inconsitent data shows up
+    const cursor = Collection.find({}, { day: 1 })
+    const document = cursor.toArray()
+    return document;
+}
+
+
+async function moveDataBetweenCollections(SourceCollectionName, DestinationCollectionName) {
+    const documents = await getDocuments(SourceCollectionName).then(async (result) => {
+        await CrownCommonDatabase.closeDatabase()
+        return result;
+    })
+    console.log(documents)
+    if (documents.length === 20) {
+        const Collection = await CrownCommonDatabase.connectToCollection(SourceCollectionName)
+        const FirstTenDocumentd = await Collection.find({}, { day: 1 }).limit(10).toArray()
+        const documentIdsToDelete = FirstTenDocumentd.map(doc => doc._id)
+        const newCollection = await CrownCommonDatabase.connectToCollection(DestinationCollectionName)
+        await newCollection.insertMany(FirstTenDocumentd)
+        await Collection.deleteMany({ _id: { $in: documentIdsToDelete } });
+        await CrownCommonDatabase.closeDatabase()
+    }
+    else
+        console.log("Not enough documents to do anything here")
+}
+
+
+const updatingHourlyOccupancy = nodeCron.schedule("30 8-17 * * *",async()=>{
+    const Collection = await CrownCommonDatabase.connectToCollection("CrownCommonsHourlyData")
+    //make the doc
+    const doc = {
+        amount: await crown(),
+        month: new Date().getMonth(),
+        day: new Date().getDay(),
+        year: new Date().getFullYear(),
+        time: new Date().toLocaleTimeString()
+    }
+    //add the doc to the collection
+    const result = await Collection.insertOne(doc)
+    console.log(`A document was inserted with the _id: ${result.insertedId}`);
+    await CrownCommonDatabase.closeDatabase()
+})
+
+const movingDataBetweenCollections = nodeCron.schedule("20 18 * * *", async () => {
+    await moveDataBetweenCollections("CrownCommonsHourlyData","CrownCommonsTotalData")
+})
