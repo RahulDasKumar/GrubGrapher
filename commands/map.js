@@ -5,7 +5,9 @@ const config = require('../config.json');
 const chart = new QuickChart();
 const Database = require('../database')
 const databaseObject = new Database("Sovi")
-
+const CrownCommonDatabase = new Database("CrownCommons")
+const ChartMaker = require('../chart')
+const times = ["8-AM", "9-AM", "10-AM", "11-AM", "12-AM", "1-PM", "2-PM", "3-PM", "4-PM", "5-PM"]
 /*
 Gets the documents from a collection, and find a certain document by the hour
 args-hour(which hour of the day do you want the collection from)
@@ -33,73 +35,48 @@ async function getOccupancyByHour(hour) {
     })
 }
 
-
-
-async function makeTheChart() {
-    chart.setWidth(500)
-    chart.setHeight(300);
-    chart.setVersion('2');
-    const hoursOpen = {
-        "8am": await getOccupancyByHour(8),
-        "9am": await getOccupancyByHour(9),
-        "10am": await getOccupancyByHour(10),
-        "11am": await getOccupancyByHour(11),
-        "12pm": await getOccupancyByHour(12),
-        "1pm": await getOccupancyByHour(1),
-        "2pm": await getOccupancyByHour(2),
-        "3pm": await getOccupancyByHour(3),
-        "4pm": await getOccupancyByHour(4),
-        "5pm": await getOccupancyByHour(5)
+async function retrieveCrownCommonsDocuments(hour) {
+    const regexPattern = `^${hour}`;
+    const regex = new RegExp(regexPattern);
+    const options = {
+        projection: { _id: 0, amount: 1, day: 1 }
     }
-    chart.setConfig({
-        "type": "line",
-        "data": {
-            "datasets": [
-                {
-                    "label": "Number of People",
-                    "data": [
-                        hoursOpen['8am'],
-                        hoursOpen['9am'],
-                        hoursOpen['10am'],
-                        hoursOpen['11am'],
-                        hoursOpen['12pm'],
-                        hoursOpen['1pm'],
-                        hoursOpen['2pm'],
-                        hoursOpen['3pm'],
-                        hoursOpen['4pm'],
-                        hoursOpen['5pm']
-                    ],
-                    "fill": true,
-                    "spanGaps": false,
-                    "lineTension": 0.4,
-                    "pointRadius": 3,
-                    "pointHoverRadius": 3,
-                    "categoryPercentage": 0.8,
-                    "type": "line",
-                    "borderColor": "rgb(64 78 237)",
-                    "backgroundColor": "rgba(0, 231, 255, 0.09)",
-                    "borderWidth": 3
-                }
-            ],
-            "labels": [
-                "8-AM",
-                "9-AM",
-                "10-AM",
-                "11-AM",
-                "12-AM",
-                "1-PM",
-                "2-PM",
-                "3-PM",
-                "4-PM",
-                "5-PM"
-            ],
+    const Collection = await CrownCommonDatabase.connectToCollection("CrownCommonsHourlyData")
+    const cursor = Collection.find({ time: { $regex: regex } }, options)
+    const document = cursor.toArray()
+    if (await Collection.countDocuments
+        ({ time: { $regex: regex } }) === 0) {
+        console.log("No documents found")
+    }
+    await databaseObject.closeDatabase()
+    return document;
+}
 
-        },
-        "backgroundColor": "#282b30"
 
-    });
-    console.log(chart.getUrl())
-    return chart.getUrl();
+
+async function makeTheChart(data, labels) {
+    const chartMaker = new ChartMaker()
+    chartMaker.chartSettings(data, labels)
+    return  chartMaker.getChartUrl();
+}
+
+async function getChartResultHourly() {
+    const hoursOpen = [
+        await getOccupancyByHour(8),
+        await getOccupancyByHour(9),
+        await getOccupancyByHour(10),
+        await getOccupancyByHour(11),
+        await getOccupancyByHour(12),
+        await getOccupancyByHour(1),
+        await getOccupancyByHour(2),
+        await getOccupancyByHour(3),
+        await getOccupancyByHour(4),
+        await getOccupancyByHour(5)
+    ]
+    return makeTheChart(hoursOpen, times).then(result => {
+        console.log(result)
+        return result;
+    })
 }
 
 module.exports = {
@@ -108,8 +85,7 @@ module.exports = {
         .setDescription('Testing map command'),
     async execute(interaction) {
         await interaction.deferReply();
-        await makeTheChart()
-        const url = await chart.getShortUrl();
+        const url = await getChartResultHourly()
         await interaction.editReply(`Here's the chart you requested: ${url}`);
     },
 };
