@@ -30,7 +30,7 @@ async function Sovi() {
     //goes to the link, waits for the dom content to be loaded(dynamicalled loaded elements)
     await page.goto(soviDiningHall, { waitUntil: 'domcontentloaded' })
     //uses promises to fix the issue of no data popping up
-    await wait(500)
+    await wait(750)
     //selects the number value in the website
     let data = await page.evaluate(() => {
         let occupancyData = document.querySelector('#content .text-xl').textContent;
@@ -77,14 +77,18 @@ async function moveDataBetweenCollections(SourceCollectionName, DestinationColle
 This function while run every hour that sovi is open, from 8am to 5pm
 */
 const insertingData = nodeCron.schedule("0 8-17 * * *", async () => {
-    const Collection = await SoviDatabase.connectToCollection("SoviOccupancy")
+    console.log("Inserting data")
+    const Collection = await SoviDatabase.connectToCollection("TotalSoviOccupancy")
     const doc = {
-        amount: await Sovi(),
+        amount: await Sovi().then(result=>{
+            return result;
+        }),
         month: new Date().getMonth(),
         day: new Date().getDay(),
         year: new Date().getFullYear(),
         time: new Date().toLocaleTimeString()
     }
+    console.log(doc['amount'])
     const result = await Collection.insertOne(doc)
     console.log(`A document was inserted with the _id: ${result.insertedId}`);
     await SoviDatabase.closeDatabase()
