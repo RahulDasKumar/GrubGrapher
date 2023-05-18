@@ -26,13 +26,9 @@ async function retrieveDocuments(hour) {
         console.log("No documents found")
     }
     await databaseObject.closeDatabase()
-    return document;
-}
-
-async function getOccupancyByHour(hour) {
-    return retrieveDocuments(hour).then(result => {
+    return document.then(result => {
         return result[0].amount
-    })
+    });
 }
 
 async function retrieveCrownCommonsDocuments(hour) {
@@ -49,29 +45,34 @@ async function retrieveCrownCommonsDocuments(hour) {
         console.log("No documents found")
     }
     await databaseObject.closeDatabase()
-    return document;
+    return document.then(result => {
+        return result[0].amount
+    });
 }
 
 
-
+/*
+Creates the chart
+args-data(for the plot lines) labels-for the x axis labels on the chart
+*/
 async function makeTheChart(data, labels) {
     const chartMaker = new ChartMaker()
     chartMaker.chartSettings(data, labels)
-    return  chartMaker.getChartUrl();
+    return chartMaker.getChartUrl();
 }
 
-async function getChartResultHourly() {
+async function SoviHourlyChart() {
     const hoursOpen = [
-        await getOccupancyByHour(8),
-        await getOccupancyByHour(9),
-        await getOccupancyByHour(10),
-        await getOccupancyByHour(11),
-        await getOccupancyByHour(12),
-        await getOccupancyByHour(1),
-        await getOccupancyByHour(2),
-        await getOccupancyByHour(3),
-        await getOccupancyByHour(4),
-        await getOccupancyByHour(5)
+        await retrieveDocuments(8),
+        await retrieveDocuments(9),
+        await retrieveDocuments(10),
+        await retrieveDocuments(11),
+        await retrieveDocuments(12),
+        await retrieveDocuments(1),
+        await retrieveDocuments(2),
+        await retrieveDocuments(3),
+        await retrieveDocuments(4),
+        await retrieveDocuments(5),
     ]
     return makeTheChart(hoursOpen, times).then(result => {
         console.log(result)
@@ -79,13 +80,46 @@ async function getChartResultHourly() {
     })
 }
 
+async function CrownCommonsHourlyChart() {
+    const hoursOpen = [
+        await retrieveCrownCommonsDocuments(8),
+        await retrieveCrownCommonsDocuments(9),
+        await retrieveCrownCommonsDocuments(10),
+        await retrieveCrownCommonsDocuments(11),
+        await retrieveCrownCommonsDocuments(12),
+        await retrieveCrownCommonsDocuments(1),
+        await retrieveCrownCommonsDocuments(2),
+        await retrieveCrownCommonsDocuments(3),
+        await retrieveCrownCommonsDocuments(4),
+        await retrieveCrownCommonsDocuments(5),
+    ]
+
+    return makeTheChart(hoursOpen, times).then(result => {
+        console.log(result)
+        return result;
+    })
+
+}
+
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('map')
-        .setDescription('Testing map command'),
+        .setName('hourly')
+        .setDescription('Testing hourly command')
+        .addSubcommand(subcommand=>
+            subcommand.setName('sovi')
+            .setDescription('Displays a graph of the hourly population in Sovi Dining hall from 8am to 5pm'))
+            .addSubcommand(subcommand=>
+                subcommand.setName('crown')
+                    .setDescription('Displays a graph of the hourly population in Crown Commons from 8am to 5pm')),
     async execute(interaction) {
         await interaction.deferReply();
-        const url = await getChartResultHourly()
-        await interaction.editReply(`Here's the chart you requested: ${url}`);
+        if(interaction.options.getSubcommand() === 'sovi'){
+            const url = await SoviHourlyChart()
+            await interaction.editReply(`Here's the chart you requested: ${url}`);
+        }
+        if (interaction.options.getSubcommand() === 'crown'){
+            const url = await CrownCommonsHourlyChart()
+            await interaction.editReply(`Heres the chart you requested: ${url} `)
+        }
     },
 };
