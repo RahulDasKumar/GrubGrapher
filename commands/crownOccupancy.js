@@ -23,7 +23,7 @@ async function crown() {
     let browser = await puppeteer.launch();
     let page = await browser.newPage();
     await page.goto(crownDiningHall, { waitUntil: 'domcontentloaded' })
-    await wait(500)
+    await wait(750)
     let data = await page.evaluate(() => {
         let occupancyData = document.querySelector('#content .text-xl').textContent;
         return occupancyData
@@ -66,7 +66,9 @@ const updatingHourlyOccupancy = nodeCron.schedule("30 8-17 * * *",async()=>{
     const Collection = await CrownCommonDatabase.connectToCollection("CrownCommonsHourlyData")
     //make the doc
     const doc = {
-        amount: await crown(),
+        amount: await crown().then(result =>{
+            return result
+        }),
         month: new Date().getMonth(),
         day: new Date().getDay(),
         year: new Date().getFullYear(),
