@@ -3,7 +3,7 @@ const config = require('./config.json')
 class Database {
     constructor(dbName) {
         this.dbName = dbName
-        this.uri = "mongodb+srv://rahulDas:Redbud11@cluster0.zyyhnk9.mongodb.net/?retryWrites=true&w=majority"
+        this.uri = config.mongoDBURI
         this.client = new MongoClient(this.uri)
 
     }
