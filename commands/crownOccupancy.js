@@ -23,7 +23,7 @@ async function crown() {
     let browser = await puppeteer.launch();
     let page = await browser.newPage();
     await page.goto(crownDiningHall, { waitUntil: 'domcontentloaded' })
-    await wait(750)
+    await wait(2500)
     let data = await page.evaluate(() => {
         let occupancyData = document.querySelector('#content .text-xl').textContent;
         return occupancyData
@@ -75,6 +75,7 @@ const updatingHourlyOccupancy = nodeCron.schedule("30 8-17 * * *",async()=>{
         time: new Date().toLocaleTimeString()
     }
     //add the doc to the collection
+    console.log(doc.amount + " is the amount of people in crown commons")
     const result = await Collection.insertOne(doc)
     console.log(`A document was inserted with the _id: ${result.insertedId}`);
     await CrownCommonDatabase.closeDatabase()

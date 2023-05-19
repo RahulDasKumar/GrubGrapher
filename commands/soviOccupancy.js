@@ -78,7 +78,7 @@ This function while run every hour that sovi is open, from 8am to 5pm
 */
 const insertingData = nodeCron.schedule("0 8-17 * * *", async () => {
     console.log("Inserting data")
-    const Collection = await SoviDatabase.connectToCollection("SoviOccupancy")
+    const Collection = await SoviDatabase.connectToCollection("TotalSoviOccupancy")
     const doc = {
         amount: await Sovi().then(result=>{
             return result;
