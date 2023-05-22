@@ -4,7 +4,7 @@ const databaseObject = new Database("Sovi")
 const CrownCommonDatabase = new Database("CrownCommons")
 const ChartMaker = require('../chart')
 const times = ["8-AM", "9-AM", "10-AM", "11-AM", "12-AM", "1-PM", "2-PM", "3-PM", "4-PM", "5-PM"]
-
+const days = { "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 0 }
 
 /*
 Creates the chart
@@ -22,10 +22,7 @@ async function SoviHourlyChart() {
     for (let i = 0; i < timesNumber.length; i++) {
         hoursOpen.push(await databaseObject.retrieveDocumentsByHour(timesNumber[i], "SoviOccupancy"))
     }
-    return makeTheChart(hoursOpen, times).then(result => {
-        console.log(result)
-        return result;
-    })
+    return await makeTheChart(hoursOpen, times)
 }
 
 async function CrownCommonsHourlyChart() {
@@ -34,9 +31,18 @@ async function CrownCommonsHourlyChart() {
     for (let i = 0; i < timesNumber.length; i++) {
         hoursOpen.push(await CrownCommonDatabase.retrieveDocumentsByHour(timesNumber[i], "CrownCommonsHourlyData"))
     }
-    return makeTheChart(hoursOpen, times).then(result => {
+    return await makeTheChart(hoursOpen, times)
+}
+
+async function SoviWeeklyAverageChart(){
+    const dayKeys = Object.entries(days)
+    const averageValues = []
+    for (const [key, value] of dayKeys) {
+        console.log(key, value)
+        averageValues.push(await databaseObject.getAverageOccupanysByDay(value, "TotalSoviOccupancy"))
+    }
+    return await makeTheChart(averageValues, Object.keys(days)).then(result => {
         console.log(result)
-        return result;
     })
 }
 
